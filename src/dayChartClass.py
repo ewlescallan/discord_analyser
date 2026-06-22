@@ -10,6 +10,7 @@ class dayChartClass:
         self.chart = self.initDayChart()
         self.pane = pn.pane.Matplotlib(self.chart)
         self.daySlider = self.initDaySlider(startDate, endDate)
+        self.rollingWindowSlider = pn.widgets.IntSlider(value=0, start=0, end=90, step=5)
         self.axisLockBox = pn.widgets.Checkbox(label="Lock Axis")
         self.linesBoxes = self.initLinesBoxes(participantCount)
 
@@ -22,6 +23,16 @@ class dayChartClass:
             for memberNo in range(len(valsInd)):
                 valsInd[memberNo].append(len(self.messagesByDay[day][memberNo]))
         return valsTotal, valsInd
+    
+    def getDayChartGap(self, startDate, endDate):
+        startGap, endGap = 0, 0
+        firstDay = self.days[0]
+        lastDay = self.days[-1]
+        if startDate != firstDay:
+            startGap = int(str(startDate - firstDay).split(" ")[0])
+        if endDate != lastDay:
+            endGap = int(str(lastDay - endDate).split(" ")[0])
+        return startGap, endGap
     
     def initDaySlider(self, startDate, endDate):
         return pn.widgets.DateRangeSlider(
@@ -64,17 +75,14 @@ class dayChartClass:
             ax.set_ylim(top=maxValue + 100)
         plt.close(fig)
         return fig
-
-    def getDayChartGap(self, startDate, endDate):
-        startGap, endGap = 0, 0
-        firstDay = self.days[0]
-        lastDay = self.days[-1]
-        if startDate != firstDay:
-            startGap = int(str(startDate - firstDay).split(" ")[0])
-        if endDate != lastDay:
-            endGap = int(str(lastDay - endDate).split(" ")[0])
-        return startGap, endGap
     
     def chartChanged(self, event):
         self.pane.object = self.updateDayChart(self.daySlider.value_start, self.daySlider.value_end)
         self.pane.param.trigger('object')
+
+    def watchWidgets(self):
+        self.daySlider.param.watch(self.chartChanged, 'value')
+        self.rollingWindowSlider.param.watch(self.chartChanged, 'value')
+        self.axisLockBox.param.watch(self.chartChanged, 'value')
+        for lineCheckBox in self.linesBoxes:
+            lineCheckBox.param.watch(self.chartChanged, 'value')

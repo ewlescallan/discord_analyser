@@ -14,21 +14,18 @@ startDate, endDate = reader.getStartAndEndDate(messagesArray)
 messagesByDay = reader.getMessagesByDay(messagesArray, startDate, endDate)
 
 dayChart = dayChartClass(messagesByDay, startDate, endDate, participantCount)
-
-dayChart.daySlider.param.watch(dayChart.chartChanged, 'value')
-dayChart.axisLockBox.param.watch(dayChart.chartChanged, 'value')
-for lineCheckBox in dayChart.linesBoxes:
-    lineCheckBox.param.watch(dayChart.chartChanged, 'value')
+dayChart.watchWidgets()
 
 pn.Column(
     pn.Row(
-        dayChart.daySlider,
-        dayChart.axisLockBox
+        dayChart.daySlider
     ),
     pn.Row(
-        pn.Column(*dayChart.linesBoxes),
+        pn.Column(
+                *dayChart.linesBoxes, 
+                  dayChart.axisLockBox
+                ),
         dayChart.pane
     )
 ).servable()
-
 
