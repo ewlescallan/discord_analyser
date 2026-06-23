@@ -18,7 +18,8 @@ dayChart.watchWidgets()
 
 pn.Column(
     pn.Row(
-        dayChart.daySlider
+        dayChart.daySlider,
+        dayChart.rollingWindowSlider
     ),
     pn.Row(
         pn.Column(
