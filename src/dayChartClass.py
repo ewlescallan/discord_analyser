@@ -2,19 +2,28 @@ import matplotlib.pyplot as plt
 import panel as pn
 
 class dayChartClass:
-    def __init__(self, messagesByDay, startDate, endDate, participantCount):
+    def __init__(self, messagesByDay, startDate, endDate, participantCount, daySlider):
         self.messagesByDay = messagesByDay
         self.days = list(messagesByDay.keys())
         self.dayCount = len(self.days)
         self.vals = self.getVals()
         self.chart = self.initDayChart()
-        self.pane = pn.pane.Matplotlib(self.chart)
-        self.daySlider = self.initDaySlider(startDate, endDate)
+        self.pane = pn.pane.Matplotlib(self.chart, width=400, height=400)
         self.rollingWindowSlider = pn.widgets.IntSlider(value=0, start=0, end=90, step=5, name='Rolling Window')
+        self.daySlider = daySlider
         self.axisLockBox = pn.widgets.Checkbox(label="Lock Axis")
-        #average lines
+        self.originalVals = self.getOriginalVals()
+        self.originalAverages = self.getAverages(self.originalVals)
+        self.averages = self.originalAverages
+        self.averageLinesBox = pn.widgets.Checkbox(label="Average Lines")
         self.linesBoxes = self.initLinesBoxes(participantCount)
     
+    def getAverages(self, vals):
+        originalAverages = [0 for i in range(len(vals))]
+        for memberNo in range(len(self.originalVals)):
+            originalAverages[memberNo] = sum(self.originalVals[memberNo]) / self.dayCount 
+        return originalAverages
+
     #Obtains message totals per day without a rolling window (ie = 1)
     def getOriginalVals(self):
         vals = [[] for i in range(len(self.messagesByDay[self.days[0]]) + 1)]
@@ -27,8 +36,7 @@ class dayChartClass:
 
     #Obtains message totals. Rolling window means the last x days are summed, reducing variability
     def getVals(self, rollingWindow=0):
-        originalVals = self.getOriginalVals()
-        if rollingWindow == 0: return originalVals
+        if rollingWindow == 0: return self.getOriginalVals()
         rollingWindow += 1
         vals = [[] for i in range(len(self.messagesByDay[self.days[0]]) + 1)]
         totals = [0 for i in range(len(vals))]
@@ -39,7 +47,7 @@ class dayChartClass:
                 if lineNo > 0 :
                     totals[lineNo] += len(self.messagesByDay[day][lineNo - 1])
                 if dayNo - rollingWindow >= 0:
-                    totals[lineNo] -= originalVals[lineNo][dayNo - rollingWindow]
+                    totals[lineNo] -= self.originalVals[lineNo][dayNo - rollingWindow]
                 vals[lineNo].append(totals[lineNo])
         return vals
     
@@ -53,15 +61,6 @@ class dayChartClass:
         if endDate != lastDay:
             endGap = int(str(lastDay - endDate).split(" ")[0])
         return startGap, endGap
-    
-    #Initialises the slider allowing for date selection
-    def initDaySlider(self, startDate, endDate):
-        return pn.widgets.DateRangeSlider(
-            label='Date Range',
-            start=startDate, end=endDate,
-            value=(startDate, endDate),
-            step=2
-        )
 
     #Initialises the checkboxes allowing for certain lines to be shown or hidden
     def initLinesBoxes(self, participantCount):
@@ -75,6 +74,12 @@ class dayChartClass:
     def initDayChart(self):
         fig,ax = plt.subplots(figsize = (4,3))
         ax.plot(self.days, self.vals[0])
+        fig.subplots_adjust(
+            left=0.15,
+            right=0.98,
+            bottom=0.15,
+            top=0.95
+        )
         plt.close(fig)
         return fig
 
@@ -89,14 +94,23 @@ class dayChartClass:
                 maxValue = max(maxValue, max(self.vals[dayChartLineNo]))
                 line = self.vals[dayChartLineNo][startGap : self.dayCount - endGap]
                 ax.plot(days, line)
+            if self.averageLinesBox.value:
+                ax.plot(days, [self.averages[dayChartLineNo] for i in range(self.dayCount)][startGap : self.dayCount - endGap], linestyle="dashed")
         if self.axisLockBox.value:
             ax.set_ylim(top=maxValue * 1.05)
+        fig.subplots_adjust(
+            left=0.15,
+            right=0.98,
+            bottom=0.15,
+            top=0.95
+        )
         plt.close(fig)
         return fig
     
     #Called when the rolling window slider has been changed to get new values
     def rollingWindowChanged(self, event=None):
         self.vals = self.getVals(self.rollingWindowSlider.value)
+        self.averages = list(map(lambda x: x * (self.rollingWindowSlider.value + 1), self.originalAverages))
         self.chartChanged()
     
     #Called when any parameter attached to the chart has changed via a widget
@@ -106,8 +120,19 @@ class dayChartClass:
 
     #Sets all widgets to watch for changes
     def watchWidgets(self):
-        self.daySlider.param.watch(self.chartChanged, 'value')
         self.rollingWindowSlider.param.watch(self.rollingWindowChanged, 'value')
+        self.averageLinesBox.param.watch(self.chartChanged, 'value')
         self.axisLockBox.param.watch(self.chartChanged, 'value')
         for lineCheckBox in self.linesBoxes:
             lineCheckBox.param.watch(self.chartChanged, 'value')
+
+    def setUp(self, width, height):
+        grid = pn.GridSpec(width=width, height=height)
+        grid[0:6, 0:4] = pn.Column(
+                    self.rollingWindowSlider,
+                    self.axisLockBox,
+                    self.averageLinesBox,
+                    pn.Column(*self.linesBoxes)
+                    )
+        grid[0:6, 4:16] = self.pane
+        return grid
