@@ -1,7 +1,7 @@
 import os
 import json 
 import datetime
-from message import Message
+from classMessage import Message
 
 #Takes a timestamp from the JSON file and converts it into a datetime date object
 def convertTimestampToDate(timestamp):
@@ -26,6 +26,7 @@ def convertJsonToMessage(messageJson):
     return messagesArray
 
 #Returns the earliest and latest date messages were sent in the channel
+#needs to be changed to get the latest start and earliest end
 def getStartAndEndDate(messagesArray):
     startDate = datetime.date(year = 3000, month = 1, day = 1)
     endDate = datetime.date(year = 1, month = 1, day = 1)
