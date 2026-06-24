@@ -2,18 +2,20 @@ import matplotlib.pyplot as plt
 import panel as pn
 
 class dayChartClass:
-    def __init__(self, messagesByDay, startDate, endDate, participantCount, daySlider):
+    def __init__(self, messagesByDay, startDate, endDate, participantCount, daySlider, memberArray):
         self.messagesByDay = messagesByDay
         self.days = list(messagesByDay.keys())
         self.dayCount = len(self.days)
+        self.originalVals = self.getOriginalVals()
+        self.originalAverages = self.getAverages(self.originalVals)
+        self.memberArray = memberArray
+        self.lineColours = ["dimgrey"] + [member.colour for member in memberArray]
         self.vals = self.getVals()
         self.chart = self.initDayChart()
         self.pane = pn.pane.Matplotlib(self.chart, width=400, height=400)
         self.rollingWindowSlider = pn.widgets.IntSlider(value=0, start=0, end=90, step=5, name='Rolling Window')
         self.daySlider = daySlider
         self.axisLockBox = pn.widgets.Checkbox(label="Lock Axis")
-        self.originalVals = self.getOriginalVals()
-        self.originalAverages = self.getAverages(self.originalVals)
         self.averages = self.originalAverages
         self.averageLinesBox = pn.widgets.Checkbox(label="Average Lines")
         self.linesBoxes = self.initLinesBoxes(participantCount)
@@ -67,13 +69,13 @@ class dayChartClass:
         dayChartLines = [pn.widgets.Checkbox(label="Total")]
         dayChartLines[0].value = True
         for memberNo in range(participantCount):
-            dayChartLines.append(pn.widgets.Checkbox(label=f"Participant {memberNo + 1}"))
+            dayChartLines.append(pn.widgets.Checkbox(label=f"{self.memberArray[memberNo].name}"))
         return dayChartLines
 
     #Create initial daily message chart
     def initDayChart(self):
         fig,ax = plt.subplots(figsize = (4,3))
-        ax.plot(self.days, self.vals[0])
+        ax.plot(self.days, self.vals[0], color=self.lineColours[0])
         fig.subplots_adjust(
             left=0.15,
             right=0.98,
@@ -93,9 +95,9 @@ class dayChartClass:
             if self.linesBoxes[dayChartLineNo].value:
                 maxValue = max(maxValue, max(self.vals[dayChartLineNo]))
                 line = self.vals[dayChartLineNo][startGap : self.dayCount - endGap]
-                ax.plot(days, line)
+                ax.plot(days, line, color=self.lineColours[dayChartLineNo])
             if self.averageLinesBox.value:
-                ax.plot(days, [self.averages[dayChartLineNo] for i in range(self.dayCount)][startGap : self.dayCount - endGap], linestyle="dashed")
+                ax.plot(days, [self.averages[dayChartLineNo] for i in range(self.dayCount)][startGap : self.dayCount - endGap], linestyle="dashed", color=self.lineColours[dayChartLineNo])
         if self.axisLockBox.value:
             ax.set_ylim(top=maxValue * 1.05)
         fig.subplots_adjust(
